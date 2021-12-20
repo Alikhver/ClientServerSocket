@@ -33,30 +33,29 @@ public class MonoThreadClientHandler implements Runnable {
             System.out.println("Server reading from channel");
 
             while (true) {
-                response = new StringBuilder();
+                response = new StringBuilder().append("Available trips:\n");
                 for (int i = 0; i < trips.size(); i++) {
                     response.append(i + 1).append(": ").append(trips.get(i).getData())
                             .append(" : ").append(trips.get(i).getDate().getTime())
                             .append('\n');
                 }
 
-                sendResponse(response.append("Choose a trips number: \n").toString());
+                sendResponse(response.append("Choose a trips number: ").toString());
                 request = getRequest();
 
                 try {
                     if (Integer.parseInt(request) > 0 && Integer.parseInt(request) <= trips.size()) {
+                        trip = busStation.getTrips().get(Integer.parseInt(request) - 1);
                         break;
                     } else {
-                        sendWrongInputResponse("There is no trip with entered number.");
+                        sendWrongInputResponse("There is no trip with entered number: enter for OK");
                     }
                 } catch (NumberFormatException e) {
-                    sendWrongInputResponse("Wrong data format\n");
+                    sendWrongInputResponse("Wrong data format: enter for OK");
                 }
             }
 
             while (true) {
-                request = getRequest();
-                trip = busStation.getTrips().get(Integer.parseInt(request) - 1);
                 response = new StringBuilder()
                         .append("Available seats:").append('\n').append("  ");
 
@@ -78,25 +77,34 @@ public class MonoThreadClientHandler implements Runnable {
                 }
                 response.append("Choose a seat: (format: r p (r for row, p for place)) ");
                 sendResponse(response.toString());
-                String[] args = request.split(" ");
-                int row = Integer.parseInt(args[0]);
-                int place = Integer.parseInt(args[1]);
-                response = new StringBuilder();
 
-                if (row >= 0 && row < trip.getSeats()[0].length && place >= 0 && place < trip.getSeats().length) {
-                    if (trip.reserve(row, place)) {
-                        response.append("You have reserved a place: ").append(row).append(" ").append(place)
-                                .append("\nGood Bye!");
-                        sendResponse(response.toString());
-                        break;
-                    } else {
-                        response.append("This place was already reserved\n")
-                                .append("Choose a seat again:\n");
+                request = getRequest();
 
-                        sendResponse(response.toString());
+                try {
+                    String[] args = request.split(" ");
+                    if (args[0].equals("") || args[1].equals("")) {
+                        throw new NumberFormatException();
                     }
-                } else {
-                    sendWrongInputResponse("Incorrect row or seat number \n");
+                    // TODO wrong handling on input "n ", n is number
+                    int row = Integer.parseInt(args[0]);
+                    int place = Integer.parseInt(args[1]);
+                    response = new StringBuilder();
+                    if (row >= 0 && row < trip.getSeats()[0].length && place >= 0 && place < trip.getSeats().length) {
+                        if (trip.reserve(row, place)) {
+                            response.append("You have reserved a place: ")
+                                    .append(row).append(" ").append(place)
+                                    .append("\nGood Bye!");
+                            sendResponse(response.toString());
+                            break;
+                        } else {
+                            sendWrongInputResponse(response.append("This place was already reserved\n")
+                                    .append("Choose a seat again:").toString());
+                        }
+                    } else {
+                        sendWrongInputResponse("Incorrect row or seat number: enter for OK");
+                    }
+                } catch (NumberFormatException e) {
+                    sendWrongInputResponse("Wrong data format: enter for OK");
                 }
             }
 
@@ -144,5 +152,6 @@ public class MonoThreadClientHandler implements Runnable {
 
     private void sendWrongInputResponse(String msg) throws IOException {
         sendResponse("Input is not correct: " + msg);
+        getRequest();
     }
 }
